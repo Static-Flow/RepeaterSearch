@@ -3,171 +3,183 @@ package com.staticflow;
 import burp.IBurpExtender;
 import burp.IBurpExtenderCallbacks;
 import burp.IExtensionStateListener;
-import burp.ITempFile;
-import javassist.bytecode.ClassFile;
-import javassist.bytecode.ClassFilePrinter;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RepeaterSearch implements IBurpExtender, IExtensionStateListener {
 
+    public static final String REPEATER = "Repeater";
+    public static final String SEARCH = "Search";
+    public static final String ENTER_QUERY = "Enter query...";
     private Component repeaterComponent;
+    private IBurpExtenderCallbacks callbacks;
+    private boolean searchResponseForText;
+    private boolean searchRequestForText;
+    private boolean useRegex;
 
     @Override
     public void registerExtenderCallbacks(IBurpExtenderCallbacks iBurpExtenderCallbacks) {
+        this.searchRequestForText = true;
+        this.callbacks = iBurpExtenderCallbacks;
         iBurpExtenderCallbacks.registerExtensionStateListener(this);
-        this.repeaterComponent = BurpGuiControl.getBaseBurpComponent("Repeater");
-        for(AWTEventListener l : Toolkit.getDefaultToolkit().getAWTEventListeners()) {
-            InputStream in = l.getClass().getResourceAsStream('/'+l.getClass().getName().replace('.', '/')+".class");
-            byte[] targetArray = new byte[0];
-            try {
-                targetArray = new byte[in.available()];
-                in.read(targetArray);
-                ITempFile temp = iBurpExtenderCallbacks.saveToTempFile(targetArray);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            System.out.println(l + " "+l.getClass() + " "+l.getClass().getCanonicalName());
-            ClassFile c = new ClassFile(false,l.getClass().getName(),null);
-            ClassFilePrinter.print(c,new PrintWriter(System.out, true));
-        }
-        //BurpGuiControl.printChildrenComponentsInputMaps(BurpGuiControl.getRootPane().getParent(),0,25);
-
-        BurpGuiControl.getRootPane().getToolkit().addAWTEventListener(new AWTEventListener() {
-
-            public void eventDispatched(final AWTEvent event) {
-                if (event.getID() == KeyEvent.KEY_PRESSED) {
-                    System.out.println("Key pressed");
-                    final KeyEvent keyEvent = (KeyEvent) event;
-                    switch (keyEvent.getKeyCode()) {
-                        case KeyEvent.VK_R:
-                            System.out.println("Was the r key");
-                            if(keyEvent.isControlDown() && keyEvent.isShiftDown()) {
-                                System.out.println("HERE");
-                            }
-                            break;
-                    }
-                }
-            }
-
-        }, AWTEvent.KEY_EVENT_MASK);
-        ((JTabbedPane) BurpGuiControl.getRootPane()).getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_R,InputEvent.SHIFT_DOWN_MASK | InputEvent.CTRL_DOWN_MASK),"donone");
-        ((JTabbedPane) BurpGuiControl.getRootPane()).getActionMap().put("donone", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("DO nothing");
-
-            }
-        });
+        this.repeaterComponent = BurpGuiControl.getBaseBurpComponent(REPEATER);
         JPanel combined = new JPanel(new GridBagLayout());
-        combined.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_R,InputEvent.SHIFT_DOWN_MASK | InputEvent.CTRL_DOWN_MASK),"repeater");
-        combined.getActionMap().put("repeater", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("Pressed");
-            }
-        });
-        JButton searchButton = new JButton("Search");
-        JTextField searchBar = new JTextField("Enter query...");
+        JPanel searchBarPanel = new JPanel(new GridBagLayout());
+        JPanel searchBarButtonsPanel = new JPanel();
+        searchBarButtonsPanel.setLayout(new BoxLayout(searchBarButtonsPanel,
+                BoxLayout.Y_AXIS));
+        JButton searchButton = new JButton(SEARCH);
+        JTextField searchBar = new JTextField(ENTER_QUERY);
         GridBagConstraints c = new GridBagConstraints();
+        GridBagConstraints gbc = new GridBagConstraints();
+
         c.gridx = 0;
         c.gridy = 0;
-        c.weightx = 1;
+        c.weightx = 0.90;
         c.weighty = 0.05;
         c.fill = GridBagConstraints.BOTH;
-        searchBar.addFocusListener(new FocusListener() {
+        searchBar.addMouseListener(new MouseListener() {
             @Override
-            public void focusGained(FocusEvent e) {
-                if (searchBar.getText().equals("Enter query...")) {
+            public void mouseClicked(MouseEvent e) {
+                if (searchBar.getText().equals(ENTER_QUERY)) {
                     searchBar.setText("");
                 }
             }
+
             @Override
-            public void focusLost(FocusEvent e) {
+            public void mousePressed(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
                 if (searchBar.getText().isEmpty()) {
-                    searchBar.setText("Enter query...");
+                    searchBar.setText(ENTER_QUERY);
                 }
             }
         });
-        combined.add(searchBar,c);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1;
+        gbc.weighty = 0.50;
+        searchBarPanel.add(searchBar,gbc);
+        searchBar.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                searchButton.setText(SEARCH);
+                resetRepeaterTabs();
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+
+            }
+        });
         searchButton.addActionListener(e -> {
-                if(searchButton.getText().equals("Search")) {
+                if(searchButton.getText().equals(SEARCH)) {
                     searchRepeaterTabsForString(searchBar.getText());
                     searchButton.setText("Clear");
                 } else {
                     resetRepeaterTabs();
-                    searchBar.setText("Enter query...");
-                    searchButton.setText("Search");
+                    searchBar.setText(ENTER_QUERY);
+                    searchButton.setText(SEARCH);
+                    resetRepeaterTabs();
                 }
         });
+        searchBarButtonsPanel.add(searchButton);
+        JCheckBox searchRequest = new JCheckBox("Request");
+        searchRequest.setSelected(true);
+        searchRequest.addChangeListener(e -> searchRequestForText = !searchRequestForText);
+        searchBarButtonsPanel.add(searchRequest);
+        JCheckBox searchResponse = new JCheckBox("Response");
+        searchResponse.addChangeListener(e -> searchResponseForText = !searchResponseForText);
+        searchBarButtonsPanel.add(searchResponse);
+        JCheckBox searchRegex = new JCheckBox("Regex");
+        searchRegex.addChangeListener(e -> useRegex = !useRegex);
+        searchBarButtonsPanel.add(searchRegex);
+        combined.add(searchBarPanel,c);
         c.gridx = 1;
-        combined.add(searchButton);
+        c.weightx = 0.10;
+        combined.add(searchBarButtonsPanel,c);
         c.gridy = 1;
         c.gridx = 0;
         c.gridwidth = 2;
         c.weighty = 0.95;
         combined.add(repeaterComponent,c);
         iBurpExtenderCallbacks.customizeUiComponent(combined);
-        BurpGuiControl.addBaseBurpComponent("Repeater",combined);
+        BurpGuiControl.addBaseBurpComponent(REPEATER,combined);
     }
 
     @Override
     public void extensionUnloaded() {
-        BurpGuiControl.replaceBaseBurpComponent("Repeater",this.repeaterComponent);
-    }
-
-
-    /**
-     * Walks the GUI tree to get the Textarea of the Repeater Response
-     * @return The Textarea of the Repeater Response
-     */
-    private JTextArea getRepeaterTabResponseTextArea(Container repeaterTab) {
-            Container requestResponsePanel = (Container) repeaterTab.getComponent(3);
-            Container innerPanel = (Container) requestResponsePanel.getComponent(0);
-            Container splitPane = (Container) innerPanel.getComponent(0);
-            //BurpGuiControl.printChildrenComponents(splitPane,0,5);
-            Container responsePane = (Container) splitPane.getComponent(2);
-            Container innerResponsePane = (Container) responsePane.getComponent(1); //dz_
-            Container textRegion = (Container) innerResponsePane.getComponent(1); //dzr
-            Container textRegionInnerPane = (Container) textRegion.getComponent(0); //dzb
-            Container messageArea = (Container) textRegionInnerPane.getComponent(1); //dzr
-            Container a = (Container) messageArea.getComponent(0);//dko
-            Container b = (Container) a.getComponent(0); //dte
-            Container c = (Container) b.getComponent(1); //c_3
-            Container d = (Container) c.getComponent(0); //Viewport
-            return (JTextArea) d.getComponent(0);
-
+        resetRepeaterTabs();
+        BurpGuiControl.replaceBaseBurpComponent(REPEATER,this.repeaterComponent);
     }
 
     private void resetRepeaterTabs(){
         JTabbedPane repeaterTabs = ((JTabbedPane)this.repeaterComponent);
-        int index = 0;
-        for(Component ignored : repeaterTabs.getComponents()) {
-            repeaterTabs.setBackgroundAt(index,new Color(0xBBBBBB));
-            index++;
+        for(int i=0; i < repeaterTabs.getTabCount()-1; i++) {
+            repeaterTabs.setBackgroundAt(i,new Color(0xBBBBBB));
+
         }
     }
 
     private void searchRepeaterTabsForString(String search) {
         JTabbedPane repeaterTabs = ((JTabbedPane)this.repeaterComponent);
-        int index = 0;
-        for(Component repeaterTab : repeaterTabs.getComponents()) {
+        for( int i=0; i < repeaterTabs.getTabCount()-1; i++) {
             try {
-                JTextArea requestBody = getRepeaterTabResponseTextArea((Container) repeaterTab);
-                System.out.println(requestBody.getText() + " : " + requestBody.getText().contains(search));
-                if( requestBody.getText().contains(search) ) {
-                    System.out.println(repeaterTabs.getComponentAt(index));
-                    repeaterTabs.setBackgroundAt(index,new Color(0xff6633));
+                if ( searchRequestForText ) {
+                    System.out.println("Searching request");
+                    JTextArea requestTextArea =
+                            BurpGuiControl.getRepeaterTabRequestTextArea((Container) repeaterTabs.getComponentAt(i));
+                    if (searchTextArea(search,requestTextArea) ) {
+                        System.out.println("Found in request");
+                        repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
+                    }
+                } else if ( searchResponseForText ) {
+                    System.out.println("Searching response");
+                    JTextArea responseTextArea =
+                            BurpGuiControl.getRepeaterTabResponseTextArea((Container) repeaterTabs.getComponentAt(i));
+                    if (searchTextArea(search, responseTextArea)) {
+                        System.out.println("Found in response");
+                        repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
+                    }
                 }
-                index++;
             }catch(ArrayIndexOutOfBoundsException e) {
-                System.out.println(e);
+                this.callbacks.printError(e.getMessage());
             }
+        }
+    }
+
+    private boolean searchTextArea(String search, JTextArea textArea) {
+        if (useRegex) {
+            System.out.println("Using regex");
+            Pattern pattern = Pattern.compile(search,Pattern.MULTILINE);
+            Matcher matcher = pattern.matcher(textArea.getText());
+            return matcher.find();
+        } else {
+            System.out.println("Using string matching");
+            return textArea.getText().contains(search);
         }
     }
 
