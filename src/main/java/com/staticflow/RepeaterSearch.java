@@ -52,17 +52,17 @@ public class RepeaterSearch implements IBurpExtender, IExtensionStateListener {
 
             @Override
             public void mousePressed(MouseEvent e) {
-
+                //UnNeeded
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-
+                //UnNeeded
             }
 
             @Override
             public void mouseEntered(MouseEvent e) {
-
+                //UnNeeded
             }
 
             @Override
@@ -87,12 +87,12 @@ public class RepeaterSearch implements IBurpExtender, IExtensionStateListener {
 
             @Override
             public void keyPressed(KeyEvent e) {
-
+                //UnNeeded
             }
 
             @Override
             public void keyReleased(KeyEvent e) {
-
+                //UnNeeded
             }
         });
         searchButton.addActionListener(e -> {
@@ -149,19 +149,15 @@ public class RepeaterSearch implements IBurpExtender, IExtensionStateListener {
         for( int i=0; i < repeaterTabs.getTabCount()-1; i++) {
             try {
                 if ( searchRequestForText ) {
-                    System.out.println("Searching request");
                     JTextArea requestTextArea =
                             BurpGuiControl.getRepeaterTabRequestTextArea((Container) repeaterTabs.getComponentAt(i));
                     if (searchTextArea(search,requestTextArea) ) {
-                        System.out.println("Found in request");
                         repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
                     }
                 } else if ( searchResponseForText ) {
-                    System.out.println("Searching response");
                     JTextArea responseTextArea =
                             BurpGuiControl.getRepeaterTabResponseTextArea((Container) repeaterTabs.getComponentAt(i));
                     if (searchTextArea(search, responseTextArea)) {
-                        System.out.println("Found in response");
                         repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
                     }
                 }
@@ -173,12 +169,10 @@ public class RepeaterSearch implements IBurpExtender, IExtensionStateListener {
 
     private boolean searchTextArea(String search, JTextArea textArea) {
         if (useRegex) {
-            System.out.println("Using regex");
             Pattern pattern = Pattern.compile(search,Pattern.MULTILINE);
             Matcher matcher = pattern.matcher(textArea.getText());
             return matcher.find();
         } else {
-            System.out.println("Using string matching");
             return textArea.getText().contains(search);
         }
     }
