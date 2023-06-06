@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 public class Utils {
 
     private static final String SEARCH = "Search";
+    private static final String RESET = "Reset";
     private static final String ENTER_QUERY = "Enter query...";
     private static boolean searchResponseForText = false;
     private static boolean searchRequestForText = true;
@@ -90,8 +91,9 @@ public class Utils {
         JPanel searchBarPanel = new JPanel(new GridBagLayout());
         JPanel searchBarButtonsPanel = new JPanel();
         searchBarButtonsPanel.setLayout(new BoxLayout(searchBarButtonsPanel,
-                BoxLayout.Y_AXIS));
+                BoxLayout.X_AXIS));
         JButton searchButton = new JButton(SEARCH);
+        JButton resetButton = new JButton(RESET);
         JTextField searchBar = new JTextField(ENTER_QUERY);
         GridBagConstraints c = new GridBagConstraints();
 
@@ -123,6 +125,8 @@ public class Utils {
         //BUILD SEARCH SUBMIT AND FILTER COMPONENTS
         searchButton.addActionListener(e -> searchRepeaterTabsForString(searchBar.getText()));
         searchBarButtonsPanel.add(searchButton);
+        resetButton.addActionListener(e -> resetRepeaterTabs());
+        searchBarButtonsPanel.add(resetButton);
         JCheckBox searchRequest = new JCheckBox("Request");
         searchRequest.setSelected(true);
         searchRequest.addChangeListener(e -> searchRequestForText = !searchRequestForText);
@@ -157,22 +161,26 @@ public class Utils {
         JTabbedPane repeaterTabs = ExtensionState.getInstance().getRepeaterTabbedPane();
         ExtensionState.getInstance().getCallbacks().logging().logToOutput("Searching for: "+search);
         for( int i=0; i < repeaterTabs.getTabCount(); i++) {
-            repeaterTabs.setBackgroundAt(i,new Color(0xBBBBBB));
-            List<Component> repeaterTabRequestResponseJTextAreas = BurpGuiControl.findAllComponentsOfType((Container) repeaterTabs.getComponentAt(i), JTextArea.class);
+            try{
+                repeaterTabs.setBackgroundAt(i,new Color(0xBBBBBB));
+                List<Component> repeaterTabRequestResponseJTextAreas = BurpGuiControl.findAllComponentsOfType((Container) repeaterTabs.getComponentAt(i), JTextArea.class);
 
-            if ( searchRequestForText ) {
-                JTextArea requestTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(0);
-                ExtensionState.getInstance().getCallbacks().logging().logToOutput(requestTextArea.getText());
-                if (searchTextArea(search,requestTextArea) ) {
-                    repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
+                if ( searchRequestForText ) {
+                    JTextArea requestTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(0);
+                    ExtensionState.getInstance().getCallbacks().logging().logToOutput(requestTextArea.getText());
+                    if (searchTextArea(search,requestTextArea) ) {
+                        repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
+                    }
                 }
-            }
-            if ( searchResponseForText ) {
-                JTextArea responseTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(1);
-                ExtensionState.getInstance().getCallbacks().logging().logToOutput(responseTextArea.getText());
-                if (searchTextArea(search, responseTextArea)) {
-                    repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
+                if ( searchResponseForText ) {
+                    JTextArea responseTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(1);
+                    ExtensionState.getInstance().getCallbacks().logging().logToOutput(responseTextArea.getText());
+                    if (searchTextArea(search, responseTextArea)) {
+                        repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
+                    }
                 }
+            }catch(Exception e){
+                ExtensionState.getInstance().getCallbacks().logging().logToOutput(e.getMessage());
             }
         }
     }
@@ -183,7 +191,7 @@ public class Utils {
     private static void resetRepeaterTabs(){
         JTabbedPane repeaterTabs = ExtensionState.getInstance().getRepeaterTabbedPane();
         for(int i=0; i < repeaterTabs.getTabCount(); i++) {
-            repeaterTabs.setBackgroundAt(i,new Color(0xBBBBBB));
+            repeaterTabs.setBackgroundAt(i,new Color(0x000000));
         }
     }
 
