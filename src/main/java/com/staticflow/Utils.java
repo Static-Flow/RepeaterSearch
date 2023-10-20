@@ -157,22 +157,32 @@ public class Utils {
         JTabbedPane repeaterTabs = ExtensionState.getInstance().getRepeaterTabbedPane();
         ExtensionState.getInstance().getCallbacks().logging().logToOutput("Searching for: "+search);
         for( int i=0; i < repeaterTabs.getTabCount(); i++) {
-            repeaterTabs.setBackgroundAt(i,new Color(0xBBBBBB));
-            List<Component> repeaterTabRequestResponseJTextAreas = BurpGuiControl.findAllComponentsOfType((Container) repeaterTabs.getComponentAt(i), JTextArea.class);
-
-            if ( searchRequestForText ) {
-                JTextArea requestTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(0);
-                ExtensionState.getInstance().getCallbacks().logging().logToOutput(requestTextArea.getText());
-                if (searchTextArea(search,requestTextArea) ) {
-                    repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
-                }
-            }
-            if ( searchResponseForText ) {
-                JTextArea responseTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(1);
-                ExtensionState.getInstance().getCallbacks().logging().logToOutput(responseTextArea.getText());
-                if (searchTextArea(search, responseTextArea)) {
-                    repeaterTabs.setBackgroundAt(i,new Color(0xff6633));
-                }
+            if (repeaterTabs.getComponentAt(i) != null) {
+                repeaterTabs.setBackgroundAt(i, new Color(0xBBBBBB));
+                List<Component> repeaterTabRequestResponseJTextAreas = BurpGuiControl.findAllComponentsOfType((Container) repeaterTabs.getComponentAt(i), JTextArea.class);
+                ExtensionState.getInstance().getCallbacks().logging().logToOutput("jtextarea count: "+repeaterTabRequestResponseJTextAreas.size());
+                    if (searchRequestForText) {
+                        JTextArea requestTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(0);
+                        if (searchTextArea(search, requestTextArea)) {
+                            ExtensionState.getInstance().getCallbacks().logging().logToOutput(requestTextArea.getText());
+                            repeaterTabs.setBackgroundAt(i, new Color(0xff6633));
+                        }
+                    }
+                    if (searchResponseForText) {
+                        for(int x = 1; x <repeaterTabRequestResponseJTextAreas.size();x++){
+                            if(((JTextArea)repeaterTabRequestResponseJTextAreas.get(x)).getText().length() != 0) {
+                                ExtensionState.getInstance().getCallbacks().logging().logToOutput("searching response");
+                                JTextArea responseTextArea = (JTextArea) repeaterTabRequestResponseJTextAreas.get(1);
+                                ExtensionState.getInstance().getCallbacks().logging().logToOutput(responseTextArea.getText());
+                                if (searchTextArea(search, responseTextArea)) {
+                                    ExtensionState.getInstance().getCallbacks().logging().logToOutput("found in response");
+                                    ExtensionState.getInstance().getCallbacks().logging().logToOutput(responseTextArea.getText());
+                                    repeaterTabs.setBackgroundAt(i, new Color(0xff6633));
+                                }
+                                break;
+                            }
+                        }
+                    }
             }
         }
     }
